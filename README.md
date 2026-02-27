@@ -7,6 +7,12 @@ A self-hosted webhook server that automatically redeploys your Docker containers
 
 ---
 
+## Bugs & Feature Requests
+
+Found a bug or have a feature request? [Open an issue](https://github.com/Mustachemiketv-projects/DeployHook/issues) on GitHub.
+
+---
+
 ## Features
 
 - **Auto-deploy on push** — listens for `workflow_run` GitHub webhook events, pulls the latest image, and relaunches the matching container
@@ -18,7 +24,7 @@ A self-hosted webhook server that automatically redeploys your Docker containers
 - **Multi-user accounts** — add and manage web UI users from Settings → Users
 - **Live customization** — change accent color, background, and panel color at runtime with no restart
 - **Configurable webhook path** — change the listener path from Settings without restarting
-- **SQLite storage** — all data stored in a single file at `/etc/deployhook/deployhook.db`
+- **SQLite storage** — all data stored in a single file at `/app/data/deployhook.db`
 
 ---
 
@@ -28,7 +34,7 @@ A self-hosted webhook server that automatically redeploys your Docker containers
 
 ```bash
 docker run -d \
-  --name webhook_server \
+  --name deployhook \
   --restart unless-stopped \
   -p 3002:8000 \
   -e SESSION_SECRET=$(openssl rand -hex 32) \
@@ -47,7 +53,7 @@ Create a `docker-compose.yml`:
 services:
   deployhook:
     image: mustachemiketv/deployhook:latest
-    container_name: webhook_server
+    container_name: deployhook
     restart: unless-stopped
     ports:
       - "3002:8000"
@@ -87,7 +93,7 @@ docker compose up -d
 On first start a random admin password is generated and printed to the container logs:
 
 ```bash
-docker logs webhook_server
+docker logs deployhook
 ```
 
 Look for:
@@ -217,7 +223,7 @@ All persistent data is stored in a Docker named volume (`deployhook_data`) mount
 To back up:
 
 ```bash
-docker cp webhook_server:/app/data /your/backup/location
+docker cp deployhook:/app/data /your/backup/location
 ```
 
 Or access the volume directly:
@@ -232,7 +238,7 @@ docker run --rm -v deployhook_data:/data -v $(pwd):/backup alpine \
 ## Architecture
 
 ```
-webhook_server (Python 3.11, FastAPI + uvicorn, port 8000 → host 3002)
+deployhook (Python 3.13-alpine, FastAPI + uvicorn, port 8000 → host 3002)
 ├── /                  Dashboard — repo list + manual controls
 ├── /repos/*           Add / edit / delete repos
 ├── /webhook           GitHub webhook receiver (path configurable)
