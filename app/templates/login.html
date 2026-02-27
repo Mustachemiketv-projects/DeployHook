@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in — {{ ui.app_title }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    body { background: {{ ui.surface_color }}; font-family: 'JetBrains Mono', monospace; }
+    .input-field {
+      background: {{ ui.surface_color }}; border: 1px solid #30363d; color: #e6edf3;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .input-field:focus { outline: none; border-color: {{ ui.accent_color }}; box-shadow: 0 0 0 3px {{ ui.accent_color }}22; }
+    .input-field::placeholder { color: #484f58; }
+    .btn-primary {
+      background: {{ ui.accent_color }}; color: {{ ui.surface_color }}; font-weight: 600;
+      transition: background .15s, transform .1s;
+    }
+    .btn-primary:hover { background: {{ ui.hover_color }}; transform: translateY(-1px); }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center text-[#e6edf3]">
+
+  <div class="w-full max-w-sm">
+
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center mb-2">
+        <picture>
+          <source srcset="/static/Logo.webp" type="image/webp" />
+          <img src="/static/Logo.png" alt="{{ ui.app_title }}" class="h-32 w-auto" />
+        </picture>
+      </div>
+      <p class="text-[#8b949e] text-xs mt-1">deploy · manage · automate</p>
+    </div>
+
+    <!-- Card -->
+    <div class="bg-[#161b22] border border-[#30363d] rounded-xl p-8"
+         style="box-shadow: 0 0 0 1px {{ ui.accent_color }}22, 0 8px 32px #00000066">
+
+      <h1 class="text-sm font-semibold text-[#e6edf3] mb-6">Sign in to continue</h1>
+
+      {% if error %}
+      <div class="mb-4 rounded-lg bg-[#1a0d0d] border border-[#f8514944] px-4 py-3 text-[#f85149] text-xs">
+        {{ error }}
+      </div>
+      {% endif %}
+
+      <form method="post" action="/login" class="space-y-4">
+        <div>
+          <label class="block text-xs text-[#8b949e] mb-1.5">Username</label>
+          <input name="username" type="text" autocomplete="username"
+                 placeholder="admin"
+                 class="input-field w-full rounded-lg px-3 py-2.5 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-[#8b949e] mb-1.5">Password</label>
+          <input name="password" type="password" autocomplete="current-password"
+                 placeholder="••••••••"
+                 class="input-field w-full rounded-lg px-3 py-2.5 text-sm" />
+        </div>
+        <button type="submit"
+                class="btn-primary w-full rounded-lg px-4 py-2.5 text-sm mt-2">
+          Sign in
+        </button>
+      </form>
+    </div>
+
+  </div>
+</body>
+</html>

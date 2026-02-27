@@ -1,0 +1,14 @@
+# Environment / secrets
+.env
+secrets/*.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Data (stored in /etc/deployhook at runtime, never in the repo)
+data/*.json
+data/*.log

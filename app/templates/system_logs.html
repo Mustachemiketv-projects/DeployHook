@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}System Logs — {{ ui.app_title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+  <!-- Header -->
+  <div class="flex items-center gap-3 mb-5">
+    <a href="/" class="text-muted hover:text-[#e6edf3] transition-colors">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </a>
+    <div class="flex-1">
+      <h1 class="text-lg font-semibold text-[#e6edf3]">System Logs</h1>
+      <p class="text-xs text-muted mt-0.5">Application logs — deploys, webhooks, errors</p>
+    </div>
+
+    <!-- Controls -->
+    <div class="flex items-center gap-2">
+      <label class="flex items-center gap-1.5 text-xs text-muted cursor-pointer select-none">
+        <input type="checkbox" id="auto-refresh" checked
+               style="accent-color: #3fb950" />
+        auto&nbsp;refresh
+      </label>
+      <button onclick="fetchLogs()" id="refresh-btn"
+              class="btn-ghost rounded-lg px-3 py-1.5 text-xs flex items-center gap-1.5">
+        <svg id="refresh-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        Refresh
+      </button>
+      <button onclick="clearView()"
+              class="btn-ghost rounded-lg px-3 py-1.5 text-xs">
+        Clear view
+      </button>
+    </div>
+  </div>
+
+  <!-- Terminal -->
+  <div class="card rounded-xl overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-2.5 border-b border-[#30363d] bg-[#0d1117]">
+      <div class="flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full bg-[#f85149] inline-block"></span>
+        <span class="w-3 h-3 rounded-full bg-[#e3b341] inline-block"></span>
+        <span class="w-3 h-3 rounded-full inline-block" style="background: #3fb950"></span>
+      </div>
+      <span class="text-[10px] text-muted font-mono">deployhook — app.log (last 1000 lines)</span>
+      <span id="line-count" class="text-[10px] text-muted"></span>
+    </div>
+
+    <pre id="log-output"
+         class="font-mono text-[11px] leading-relaxed text-[#e6edf3] overflow-auto bg-[#0d1117] p-4"
+         style="min-height:500px;max-height:75vh;white-space:pre-wrap;word-break:break-all"
+    ><span class="text-muted">Loading…</span></pre>
+  </div>
+
+  <p class="text-[10px] text-muted mt-3 text-right">
+    In-memory ring buffer — last 1 000 lines. Also written to <code>data/app.log</code>.
+    Auto-refresh every 5s.
+  </p>
+
+</div>
+
+<script>
+  let timer    = null;
+  let spinning = false;
+  let cleared  = false;
+
+  const output  = document.getElementById('log-output');
+  const autoChk = document.getElementById('auto-refresh');
+  const icon    = document.getElementById('refresh-icon');
+  const counter = document.getElementById('line-count');
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function colourise(line) {
+    const low = line.toLowerCase();
+    let cls = 'text-[#e6edf3]';
+    if (/\berror\b|\bexception\b|\bfatal\b|\bcritical\b|\btraceback\b/.test(low)) cls = 'text-[#f85149]';
+    else if (/\bwarning\b|\bwarn\b/.test(low)) cls = 'text-[#e3b341]';
+    else if (/\binfo\b/.test(low)) cls = 'text-[#8b949e]';
+    else if (/\bdebug\b/.test(low)) cls = 'text-[#484f58]';
+    // Highlight deploy events brighter
+    if (/deploy (started|succeeded)/.test(low)) cls = 'text-accent';
+    if (/deploy failed/.test(low)) cls = 'text-[#f85149] font-bold';
+    return `<span class="${cls}">${escapeHtml(line)}</span>`;
+  }
+
+  async function fetchLogs() {
+    if (spinning || cleared) return;
+    spinning = true;
+    icon.classList.add('animate-spin');
+
+    try {
+      const res  = await fetch('/api/system/logs');
+      const data = await res.json();
+
+      if (!res.ok) {
+        output.innerHTML = `<span class="text-[#f85149]">${escapeHtml(data.error || 'Failed')}</span>`;
+        return;
+      }
+
+      const atBottom = output.scrollHeight - output.scrollTop - output.clientHeight < 40;
+      const lines = data.lines || [];
+
+      output.innerHTML = lines.length
+        ? lines.map(colourise).join('\n')
+        : '<span class="text-muted">(no log entries yet)</span>';
+
+      counter.textContent = lines.length ? `${lines.length} lines` : '';
+
+      if (atBottom) output.scrollTop = output.scrollHeight;
+
+    } catch(e) {
+      output.innerHTML = `<span class="text-[#f85149]">Network error: ${escapeHtml(String(e))}</span>`;
+    } finally {
+      spinning = false;
+      icon.classList.remove('animate-spin');
+    }
+  }
+
+  function clearView() {
+    cleared = true;
+    output.innerHTML = '<span class="text-muted">(view cleared — reload page to restore)</span>';
+    counter.textContent = '';
+    stopTimer();
+    autoChk.checked = false;
+  }
+
+  function startTimer() { if (!timer) timer = setInterval(fetchLogs, 5000); }
+  function stopTimer()  { if (timer) { clearInterval(timer); timer = null; } }
+
+  autoChk.addEventListener('change', () => {
+    cleared = false;
+    autoChk.checked ? startTimer() : stopTimer();
+  });
+
+  fetchLogs();
+  startTimer();
+  setTimeout(() => { output.scrollTop = output.scrollHeight; }, 400);
+</script>
+{% endblock %}

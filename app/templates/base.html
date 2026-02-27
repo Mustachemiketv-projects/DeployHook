@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}{{ ui.app_title }}{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            surface:  '{{ ui.surface_color }}',
+            panel:    '{{ ui.panel_color }}',
+            border:   '#30363d',
+            accent:   '{{ ui.accent_color }}',
+            accentbg: '{{ ui.accent_bg }}',
+            muted:    '#8b949e',
+            danger:   '#f85149',
+            warn:     '#e3b341',
+          },
+          fontFamily: { mono: ['"JetBrains Mono"', 'monospace'] },
+        }
+      }
+    }
+  </script>
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body { background: {{ ui.surface_color }}; font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: {{ ui.surface_color }}; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+    .glow { box-shadow: 0 0 0 1px {{ ui.accent_color }}33, 0 4px 24px {{ ui.accent_color }}11; }
+    .btn-primary {
+      background: {{ ui.accent_color }}; color: {{ ui.surface_color }}; font-weight: 600;
+      transition: background .15s, transform .1s;
+    }
+    .btn-primary:hover { background: {{ ui.hover_color }}; transform: translateY(-1px); }
+    .btn-danger {
+      background: transparent; color: #f85149; border: 1px solid #f8514944;
+      transition: background .15s, border-color .15s;
+    }
+    .btn-danger:hover { background: #f8514911; border-color: #f85149; }
+    .btn-ghost {
+      background: transparent; color: #8b949e; border: 1px solid #30363d;
+      transition: color .15s, border-color .15s;
+    }
+    .btn-ghost:hover { color: #e6edf3; border-color: #8b949e; }
+    .input-field {
+      background: {{ ui.surface_color }}; border: 1px solid #30363d; color: #e6edf3;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .input-field:focus {
+      outline: none; border-color: {{ ui.accent_color }};
+      box-shadow: 0 0 0 3px {{ ui.accent_color }}22;
+    }
+    .input-field::placeholder { color: #484f58; }
+    .card { background: {{ ui.panel_color }}; border: 1px solid #30363d; }
+    .tag {
+      font-size: 11px; padding: 2px 8px; border-radius: 20px;
+      background: {{ ui.accent_bg }}; color: {{ ui.accent_color }}; border: 1px solid {{ ui.accent_color }}44;
+    }
+    .tag-warn { background: #2d1e0a; color: #e3b341; border-color: #e3b34144; }
+    .tag-info { background: #0d1b2d; color: #58a6ff; border-color: #58a6ff44; }
+    textarea.input-field { resize: vertical; min-height: 90px; }
+  </style>
+</head>
+<body class="min-h-screen text-[#e6edf3]">
+
+  <!-- Nav -->
+  <nav class="border-b border-[#30363d] bg-[#161b22] px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+    <a href="/" class="flex items-center">
+      <picture>
+        <source srcset="/static/Logo.webp" type="image/webp" />
+        <img src="/static/Logo.png" alt="{{ ui.app_title }}" class="h-14 w-auto" />
+      </picture>
+    </a>
+    <div class="flex items-center gap-4 text-xs text-muted">
+      <span class="flex items-center gap-1.5">
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+        listening on <span class="text-[#e6edf3] ml-1">{{ ui.webhook_path }}</span>
+      </span>
+      <a href="/system/logs" class="hover:text-[#e6edf3] transition-colors flex items-center gap-1.5">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        logs
+      </a>
+      <a href="/settings" class="hover:text-[#e6edf3] transition-colors flex items-center gap-1.5">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        settings
+      </a>
+      {% if request.session.get("username") %}
+      <span class="text-[#58a6ff]">{{ request.session.get("username") }}</span>
+      {% endif %}
+      <a href="/logout" class="hover:text-[#e6edf3] transition-colors">sign out</a>
+    </div>
+  </nav>
+
+  <!-- Page content -->
+  <main class="max-w-5xl mx-auto px-4 py-8 overflow-x-hidden">
+    {% block content %}{% endblock %}
+  </main>
+
+</body>
+</html>

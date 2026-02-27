@@ -1,0 +1,550 @@
+{% extends "base.html" %}
+{% block title %}Settings — {{ ui.app_title }}{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-lg font-semibold text-[#e6edf3]">Settings</h1>
+    <p class="text-xs text-muted mt-0.5">Manage credentials, branding, and users.</p>
+  </div>
+</div>
+
+{% if error %}
+<div class="mb-5 rounded-lg bg-[#1a0d0d] border border-[#f8514944] px-4 py-3 text-[#f85149] text-xs">{{ error }}</div>
+{% endif %}
+{% if success %}
+<div class="mb-5 rounded-lg border px-4 py-3 text-xs" style="background: {{ ui.accent_bg }}; border-color: {{ ui.accent_color }}44; color: {{ ui.accent_color }}">{{ success }}</div>
+{% endif %}
+
+<!-- ── Tab Bar ──────────────────────────────────────────────────────── -->
+<div class="flex gap-1 mb-6 border-b border-[#30363d]">
+  <button onclick="switchTab('credentials')" id="tab-credentials"
+          class="tab-btn px-4 py-2 text-xs font-medium transition-colors rounded-t-lg">
+    <span class="flex items-center gap-1.5">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Credentials
+    </span>
+  </button>
+  <button onclick="switchTab('customization')" id="tab-customization"
+          class="tab-btn px-4 py-2 text-xs font-medium transition-colors rounded-t-lg">
+    <span class="flex items-center gap-1.5">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      Customization
+    </span>
+  </button>
+  <button onclick="switchTab('users')" id="tab-users"
+          class="tab-btn px-4 py-2 text-xs font-medium transition-colors rounded-t-lg">
+    <span class="flex items-center gap-1.5">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Users
+    </span>
+  </button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- Tab: Credentials -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<div id="panel-credentials" class="tab-panel">
+<div class="grid grid-cols-1 gap-3 mb-8">
+
+  <!-- GHCR Username -->
+  {% set key = "GHCR_USERNAME" %}
+  {% set val = creds[key] %}
+  <div class="card rounded-xl p-5">
+    <div class="flex items-center gap-2 mb-1 flex-wrap">
+      <span class="text-[#e6edf3] text-sm font-medium">GHCR Username</span>
+      {% if val %}<span class="tag">set</span>{% else %}<span class="tag tag-warn">not set</span>{% endif %}
+      {% if key in overridden %}<span class="tag tag-info">UI override</span>{% elif val %}<span class="tag">from env</span>{% endif %}
+    </div>
+    {% if val %}
+    <code class="text-xs text-[#58a6ff] block mb-3">{{ val }}</code>
+    {% else %}
+    <p class="text-xs text-[#484f58] mb-3 italic">Not configured</p>
+    {% endif %}
+    <form method="post" action="/settings/update" class="flex items-end gap-2 mb-4 flex-wrap">
+      <input type="hidden" name="key" value="{{ key }}" />
+      <div class="flex-1 min-w-[180px]">
+        <label class="block text-xs text-muted mb-1">New value</label>
+        <input type="text" name="value" autocomplete="off" placeholder="e.g. myusername"
+               class="input-field w-full rounded-lg px-3 py-2 text-xs" />
+      </div>
+      <button type="submit" class="btn-primary rounded-lg px-4 py-2 text-xs shrink-0">Save</button>
+      {% if key in overridden %}
+      <button type="button" class="btn-ghost rounded-lg px-3 py-2 text-xs shrink-0 text-[#f85149] hover:text-[#f85149]"
+              onclick="this.form.querySelector('input[name=value]').value='';this.form.submit()">Clear</button>
+      {% endif %}
+    </form>
+    <div class="text-xs text-muted space-y-1">
+      <p class="font-medium text-[#8b949e]">How to find it:</p>
+      <ol class="list-decimal list-inside space-y-0.5 text-[#8b949e]">
+        <li>Go to <span class="text-[#e6edf3]">github.com</span> → your profile → <span class="text-[#e6edf3]">Settings</span></li>
+        <li>Your username is shown at the top under your avatar</li>
+        <li>Use the organisation name if deploying org packages</li>
+      </ol>
+      <p class="text-[#484f58] mt-1">Used to authenticate docker login to <code>ghcr.io</code> when pulling images.</p>
+    </div>
+  </div>
+
+  <!-- GHCR PAT -->
+  {% set key = "GHCR_PAT" %}
+  {% set val = creds[key] %}
+  <div class="card rounded-xl p-5">
+    <div class="flex items-center gap-2 mb-1 flex-wrap">
+      <span class="text-[#e6edf3] text-sm font-medium">GHCR Personal Access Token</span>
+      {% if val %}<span class="tag">set</span>{% else %}<span class="tag tag-warn">not set</span>{% endif %}
+      <span class="tag tag-info">read:packages</span>
+      {% if key in overridden %}<span class="tag tag-info">UI override</span>{% elif val %}<span class="tag">from env</span>{% endif %}
+    </div>
+    {% if val %}<code class="text-xs text-[#58a6ff] font-mono block mb-3">{{ val }}</code>
+    {% else %}<p class="text-xs text-[#484f58] mb-3 italic">Not configured</p>{% endif %}
+    <form method="post" action="/settings/update" class="flex items-end gap-2 mb-4 flex-wrap">
+      <input type="hidden" name="key" value="{{ key }}" />
+      <div class="flex-1 min-w-[180px]">
+        <label class="block text-xs text-muted mb-1">New value</label>
+        <input type="password" name="value" autocomplete="new-password" placeholder="ghp_••••••••"
+               class="input-field w-full rounded-lg px-3 py-2 text-xs font-mono" />
+      </div>
+      <button type="submit" class="btn-primary rounded-lg px-4 py-2 text-xs shrink-0">Save</button>
+      {% if key in overridden %}
+      <button type="button" class="btn-ghost rounded-lg px-3 py-2 text-xs shrink-0 text-[#f85149] hover:text-[#f85149]"
+              onclick="this.form.querySelector('input[name=value]').value='';this.form.submit()">Clear</button>
+      {% endif %}
+    </form>
+    <div class="text-xs text-muted space-y-1">
+      <p class="font-medium text-[#8b949e]">How to create it:</p>
+      <ol class="list-decimal list-inside space-y-0.5 text-[#8b949e]">
+        <li>Go to <span class="text-[#e6edf3]">github.com</span> → <span class="text-[#e6edf3]">Settings</span> → <span class="text-[#e6edf3]">Developer settings</span></li>
+        <li>Click <span class="text-[#e6edf3]">Personal access tokens</span> → <span class="text-[#e6edf3]">Tokens (classic)</span></li>
+        <li>Click <span class="text-[#e6edf3]">Generate new token (classic)</span></li>
+        <li>Set an expiry, then tick <span class="text-accent font-semibold">read:packages</span></li>
+        <li>Copy the token and paste it above</li>
+      </ol>
+      <p class="text-[#484f58] mt-1">Used by the deploy handler to pull private container images from ghcr.io.</p>
+    </div>
+  </div>
+
+  <!-- GitHub Webhook Secret -->
+  {% set key = "GITHUB_WEBHOOK_SECRET" %}
+  {% set val = creds[key] %}
+  <div class="card rounded-xl p-5">
+    <div class="flex items-center gap-2 mb-1 flex-wrap">
+      <span class="text-[#e6edf3] text-sm font-medium">GitHub Webhook Secret</span>
+      {% if val %}<span class="tag">set</span>{% else %}<span class="tag tag-warn">not set</span>{% endif %}
+      {% if key in overridden %}<span class="tag tag-info">UI override</span>{% elif val %}<span class="tag">from env</span>{% endif %}
+    </div>
+    {% if val %}<code class="text-xs text-[#58a6ff] font-mono block mb-3">{{ val }}</code>
+    {% else %}<p class="text-xs text-[#484f58] mb-3 italic">Not configured — webhook payloads will not be verified</p>{% endif %}
+    <form method="post" action="/settings/update" class="flex items-end gap-2 mb-4 flex-wrap">
+      <input type="hidden" name="key" value="{{ key }}" />
+      <div class="flex-1 min-w-[180px]">
+        <label class="block text-xs text-muted mb-1">New value</label>
+        <input type="password" name="value" autocomplete="new-password" placeholder="random secret string"
+               class="input-field w-full rounded-lg px-3 py-2 text-xs font-mono" />
+      </div>
+      <button type="submit" class="btn-primary rounded-lg px-4 py-2 text-xs shrink-0">Save</button>
+      {% if key in overridden %}
+      <button type="button" class="btn-ghost rounded-lg px-3 py-2 text-xs shrink-0 text-[#f85149] hover:text-[#f85149]"
+              onclick="this.form.querySelector('input[name=value]').value='';this.form.submit()">Clear</button>
+      {% endif %}
+    </form>
+    <div class="text-xs text-muted space-y-1">
+      <p class="font-medium text-[#8b949e]">How to set it up:</p>
+      <ol class="list-decimal list-inside space-y-0.5 text-[#8b949e]">
+        <li>Generate a random secret: <code class="text-[#e6edf3]">openssl rand -hex 32</code></li>
+        <li>Paste it above and click Save</li>
+        <li>In your GitHub repo → <span class="text-[#e6edf3]">Settings</span> → <span class="text-[#e6edf3]">Webhooks</span> → <span class="text-[#e6edf3]">Add webhook</span></li>
+        <li>Content type: <code class="text-[#e6edf3]">application/json</code>, paste the same secret into the <span class="text-[#e6edf3]">Secret</span> field</li>
+        <li>Event: select <span class="text-[#e6edf3]">Let me select</span> → tick <span class="text-accent font-semibold">Workflow runs</span></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- GitHub OAuth Client ID -->
+  {% set key = "GITHUB_CLIENT_ID" %}
+  {% set val = creds[key] %}
+  <div class="card rounded-xl p-5">
+    <div class="flex items-center gap-2 mb-1 flex-wrap">
+      <span class="text-[#e6edf3] text-sm font-medium">GitHub OAuth Client ID</span>
+      {% if val %}<span class="tag">set</span>{% else %}<span class="tag tag-warn">not set</span>{% endif %}
+      {% if key in overridden %}<span class="tag tag-info">UI override</span>{% elif val %}<span class="tag">from env</span>{% endif %}
+    </div>
+    {% if val %}<code class="text-xs text-[#58a6ff] block mb-3">{{ val }}</code>
+    {% else %}<p class="text-xs text-[#484f58] mb-3 italic">Not configured — Browse GitHub button will be hidden</p>{% endif %}
+    <form method="post" action="/settings/update" class="flex items-end gap-2 mb-4 flex-wrap">
+      <input type="hidden" name="key" value="{{ key }}" />
+      <div class="flex-1 min-w-[180px]">
+        <label class="block text-xs text-muted mb-1">New value</label>
+        <input type="text" name="value" autocomplete="off" placeholder="Ov23li..."
+               class="input-field w-full rounded-lg px-3 py-2 text-xs" />
+      </div>
+      <button type="submit" class="btn-primary rounded-lg px-4 py-2 text-xs shrink-0">Save</button>
+      {% if key in overridden %}
+      <button type="button" class="btn-ghost rounded-lg px-3 py-2 text-xs shrink-0 text-[#f85149] hover:text-[#f85149]"
+              onclick="this.form.querySelector('input[name=value]').value='';this.form.submit()">Clear</button>
+      {% endif %}
+    </form>
+    <div class="text-xs text-muted space-y-1">
+      <p class="font-medium text-[#8b949e]">How to create an OAuth App:</p>
+      <ol class="list-decimal list-inside space-y-0.5 text-[#8b949e]">
+        <li>Go to <span class="text-[#e6edf3]">github.com</span> → <span class="text-[#e6edf3]">Settings</span> → <span class="text-[#e6edf3]">Developer settings</span> → <span class="text-[#e6edf3]">OAuth Apps</span></li>
+        <li>Click <span class="text-[#e6edf3]">New OAuth App</span></li>
+        <li>Set <span class="text-[#e6edf3]">Authorization callback URL</span> to <code class="text-accent">{your-app-url}/auth/github/callback</code></li>
+        <li>Copy the <span class="text-[#e6edf3]">Client ID</span> and paste it above</li>
+      </ol>
+      <p class="text-[#484f58] mt-1">Enables the "Browse GitHub" repo picker in the UI via OAuth.</p>
+    </div>
+  </div>
+
+  <!-- GitHub OAuth Client Secret -->
+  {% set key = "GITHUB_CLIENT_SECRET" %}
+  {% set val = creds[key] %}
+  <div class="card rounded-xl p-5">
+    <div class="flex items-center gap-2 mb-1 flex-wrap">
+      <span class="text-[#e6edf3] text-sm font-medium">GitHub OAuth Client Secret</span>
+      {% if val %}<span class="tag">set</span>{% else %}<span class="tag tag-warn">not set</span>{% endif %}
+      {% if key in overridden %}<span class="tag tag-info">UI override</span>{% elif val %}<span class="tag">from env</span>{% endif %}
+    </div>
+    {% if val %}<code class="text-xs text-[#58a6ff] font-mono block mb-3">{{ val }}</code>
+    {% else %}<p class="text-xs text-[#484f58] mb-3 italic">Not configured</p>{% endif %}
+    <form method="post" action="/settings/update" class="flex items-end gap-2 mb-4 flex-wrap">
+      <input type="hidden" name="key" value="{{ key }}" />
+      <div class="flex-1 min-w-[180px]">
+        <label class="block text-xs text-muted mb-1">New value</label>
+        <input type="password" name="value" autocomplete="new-password" placeholder="••••••••"
+               class="input-field w-full rounded-lg px-3 py-2 text-xs font-mono" />
+      </div>
+      <button type="submit" class="btn-primary rounded-lg px-4 py-2 text-xs shrink-0">Save</button>
+      {% if key in overridden %}
+      <button type="button" class="btn-ghost rounded-lg px-3 py-2 text-xs shrink-0 text-[#f85149] hover:text-[#f85149]"
+              onclick="this.form.querySelector('input[name=value]').value='';this.form.submit()">Clear</button>
+      {% endif %}
+    </form>
+    <div class="text-xs text-muted space-y-1">
+      <p class="font-medium text-[#8b949e]">How to get it:</p>
+      <ol class="list-decimal list-inside space-y-0.5 text-[#8b949e]">
+        <li>In the OAuth App created above, click <span class="text-[#e6edf3]">Generate a new client secret</span></li>
+        <li>Copy the secret immediately — it won't be shown again</li>
+        <li>Paste it above and click Save</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- App Base URL -->
+  {% set key = "APP_BASE_URL" %}
+  {% set val = creds[key] %}
+  <div class="card rounded-xl p-5">
+    <div class="flex items-center gap-2 mb-1 flex-wrap">
+      <span class="text-[#e6edf3] text-sm font-medium">App Base URL</span>
+      {% if val %}<span class="tag">set</span>{% else %}<span class="tag tag-warn">not set</span>{% endif %}
+      {% if key in overridden %}<span class="tag tag-info">UI override</span>{% elif val %}<span class="tag">from env</span>{% endif %}
+    </div>
+    {% if val %}<code class="text-xs text-[#58a6ff] block mb-3">{{ val }}</code>
+    {% else %}<p class="text-xs text-[#484f58] mb-3 italic">Defaults to http://localhost:3002</p>{% endif %}
+    <form method="post" action="/settings/update" class="flex items-end gap-2 mb-4 flex-wrap">
+      <input type="hidden" name="key" value="{{ key }}" />
+      <div class="flex-1 min-w-[180px]">
+        <label class="block text-xs text-muted mb-1">New value</label>
+        <input type="text" name="value" autocomplete="off" placeholder="https://example.com"
+               class="input-field w-full rounded-lg px-3 py-2 text-xs" />
+      </div>
+      <button type="submit" class="btn-primary rounded-lg px-4 py-2 text-xs shrink-0">Save</button>
+      {% if key in overridden %}
+      <button type="button" class="btn-ghost rounded-lg px-3 py-2 text-xs shrink-0 text-[#f85149] hover:text-[#f85149]"
+              onclick="this.form.querySelector('input[name=value]').value='';this.form.submit()">Clear</button>
+      {% endif %}
+    </form>
+    <div class="text-xs text-muted">
+      <p class="text-[#8b949e]">The public URL of this server. Must match the OAuth callback URL set in your GitHub OAuth App.</p>
+    </div>
+  </div>
+
+  <!-- Discord Webhook -->
+  {% set key = "DISCORD_WEBHOOK_URL" %}
+  {% set val = creds[key] %}
+  <div class="card rounded-xl p-5">
+    <div class="flex items-center gap-2 mb-1 flex-wrap">
+      <span class="text-[#e6edf3] text-sm font-medium">Discord Webhook URL</span>
+      {% if val %}<span class="tag">set</span>{% else %}<span class="text-xs text-[#484f58]">optional · not set</span>{% endif %}
+      {% if key in overridden %}<span class="tag tag-info">UI override</span>{% elif val %}<span class="tag">from env</span>{% endif %}
+    </div>
+    {% if val %}<code class="text-xs text-[#58a6ff] font-mono block mb-3">{{ val }}</code>
+    {% else %}<p class="text-xs text-[#484f58] mb-3 italic">Not configured — deploy notifications disabled</p>{% endif %}
+    <form method="post" action="/settings/update" class="flex items-end gap-2 mb-4 flex-wrap">
+      <input type="hidden" name="key" value="{{ key }}" />
+      <div class="flex-1 min-w-[180px]">
+        <label class="block text-xs text-muted mb-1">New value</label>
+        <input type="password" name="value" autocomplete="new-password" placeholder="https://discord.com/api/webhooks/..."
+               class="input-field w-full rounded-lg px-3 py-2 text-xs font-mono" />
+      </div>
+      <button type="submit" class="btn-primary rounded-lg px-4 py-2 text-xs shrink-0">Save</button>
+      {% if key in overridden %}
+      <button type="button" class="btn-ghost rounded-lg px-3 py-2 text-xs shrink-0 text-[#f85149] hover:text-[#f85149]"
+              onclick="this.form.querySelector('input[name=value]').value='';this.form.submit()">Clear</button>
+      {% endif %}
+    </form>
+    <div class="text-xs text-muted space-y-1">
+      <p class="font-medium text-[#8b949e]">How to create it:</p>
+      <ol class="list-decimal list-inside space-y-0.5 text-[#8b949e]">
+        <li>Open Discord → go to the channel you want notifications in</li>
+        <li>Click the gear icon → <span class="text-[#e6edf3]">Integrations</span> → <span class="text-[#e6edf3]">Webhooks</span> → <span class="text-[#e6edf3]">New Webhook</span></li>
+        <li>Copy the Webhook URL and paste it above</li>
+      </ol>
+    </div>
+  </div>
+
+</div>
+</div><!-- /panel-credentials -->
+
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- Tab: Customization -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<div id="panel-customization" class="tab-panel">
+
+  <form method="post" action="/settings/customize" class="space-y-4">
+
+    <!-- Colors -->
+    <div class="card rounded-xl p-5">
+      <h2 class="text-xs font-semibold text-muted uppercase tracking-wider mb-4">Colors</h2>
+
+      <!-- Live preview -->
+      <div class="mb-5 p-3 rounded-lg border border-[#30363d] flex items-center gap-4 flex-wrap" id="preview-bar">
+        <span class="text-xs text-muted">Preview:</span>
+        <button type="button" id="preview-btn"
+                class="rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors"
+                style="background: {{ ui.accent_color }}; color: {{ ui.surface_color }}">Button</button>
+        <span id="preview-tag"
+              class="text-xs px-2 py-0.5 rounded-full border"
+              style="background: {{ ui.accent_bg }}; color: {{ ui.accent_color }}; border-color: {{ ui.accent_color }}44">tag</span>
+        <span id="preview-dot" class="inline-block w-2 h-2 rounded-full" style="background: {{ ui.accent_color }}"></span>
+        <span class="text-xs" style="color: {{ ui.accent_color }}">accent text</span>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+
+        <!-- Accent Color -->
+        <div>
+          <label class="block text-xs text-muted mb-1.5">Accent Color</label>
+          <div class="flex gap-2 items-center">
+            <input type="color" id="cp-accent" value="{{ ui.accent_color }}"
+                   class="w-10 h-9 rounded-lg cursor-pointer border border-[#30363d] bg-transparent p-0.5"
+                   oninput="syncColor(this,'accent_color','cp-accent-hex'); updatePreview()" />
+            <input type="text" name="accent_color" id="cp-accent-hex"
+                   value="{{ ui.accent_color }}" maxlength="7"
+                   placeholder="#a855f7"
+                   class="input-field flex-1 rounded-lg px-3 py-2 text-xs font-mono"
+                   oninput="syncHex(this,'cp-accent'); updatePreview()" />
+          </div>
+          <p class="text-[10px] text-[#484f58] mt-1">Buttons, tags, links, borders.</p>
+        </div>
+
+        <!-- Surface Color -->
+        <div>
+          <label class="block text-xs text-muted mb-1.5">Background Color</label>
+          <div class="flex gap-2 items-center">
+            <input type="color" id="cp-surface" value="{{ ui.surface_color }}"
+                   class="w-10 h-9 rounded-lg cursor-pointer border border-[#30363d] bg-transparent p-0.5"
+                   oninput="syncColor(this,'surface_color','cp-surface-hex')" />
+            <input type="text" name="surface_color" id="cp-surface-hex"
+                   value="{{ ui.surface_color }}" maxlength="7"
+                   placeholder="#0d1117"
+                   class="input-field flex-1 rounded-lg px-3 py-2 text-xs font-mono"
+                   oninput="syncHex(this,'cp-surface')" />
+          </div>
+          <p class="text-[10px] text-[#484f58] mt-1">Main page background.</p>
+        </div>
+
+        <!-- Panel Color -->
+        <div>
+          <label class="block text-xs text-muted mb-1.5">Panel / Card Color</label>
+          <div class="flex gap-2 items-center">
+            <input type="color" id="cp-panel" value="{{ ui.panel_color }}"
+                   class="w-10 h-9 rounded-lg cursor-pointer border border-[#30363d] bg-transparent p-0.5"
+                   oninput="syncColor(this,'panel_color','cp-panel-hex')" />
+            <input type="text" name="panel_color" id="cp-panel-hex"
+                   value="{{ ui.panel_color }}" maxlength="7"
+                   placeholder="#161b22"
+                   class="input-field flex-1 rounded-lg px-3 py-2 text-xs font-mono"
+                   oninput="syncHex(this,'cp-panel')" />
+          </div>
+          <p class="text-[10px] text-[#484f58] mt-1">Card and panel backgrounds.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex items-center gap-3 justify-end">
+      <button type="button" onclick="resetDefaults()"
+              class="btn-ghost rounded-lg px-4 py-2 text-xs">Reset to defaults</button>
+      <button type="submit" class="btn-primary rounded-lg px-5 py-2 text-xs">Save Customization</button>
+    </div>
+
+  </form>
+</div><!-- /panel-customization -->
+
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- Tab: Users -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<div id="panel-users" class="tab-panel">
+
+<div class="card rounded-xl overflow-hidden mb-5">
+  <table class="w-full text-xs">
+    <thead>
+      <tr class="border-b border-[#30363d] text-muted">
+        <th class="text-left px-5 py-3 font-medium">Username</th>
+        <th class="text-left px-5 py-3 font-medium">Status</th>
+        <th class="px-5 py-3"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr class="border-b border-[#30363d] last:border-0 hover:bg-[#1c2128] transition-colors">
+        <td class="px-5 py-3 text-[#e6edf3] font-medium">
+          {{ user }}
+          {% if user == current_user %}<span class="tag tag-info ml-2">you</span>{% endif %}
+        </td>
+        <td class="px-5 py-3">
+          <span class="inline-flex items-center gap-1.5 text-accent">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-accent"></span>
+            active
+          </span>
+        </td>
+        <td class="px-5 py-3 text-right">
+          {% if user != current_user and user != 'admin' %}
+          <form method="post" action="/settings/users/{{ user }}/delete"
+                onsubmit="return confirm('Delete user {{ user }}?')" class="inline">
+            <button type="submit"
+                    class="btn-danger inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              Delete
+            </button>
+          </form>
+          {% elif user == 'admin' %}
+          <span class="text-[#484f58] text-xs inline-flex items-center gap-1">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            protected
+          </span>
+          {% else %}
+          <span class="text-[#484f58] text-xs">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card rounded-xl p-5">
+  <h3 class="text-xs font-semibold text-[#e6edf3] mb-4">Add User</h3>
+  <form method="post" action="/settings/users/add" class="flex items-end gap-3 flex-wrap">
+    <div class="flex-1 min-w-[140px]">
+      <label class="block text-xs text-muted mb-1">Username</label>
+      <input name="username" type="text" autocomplete="off" placeholder="newuser"
+             class="input-field w-full rounded-lg px-3 py-2 text-xs" required />
+    </div>
+    <div class="flex-1 min-w-[180px]">
+      <label class="block text-xs text-muted mb-1">Password</label>
+      <input name="password" type="password" autocomplete="new-password" placeholder="••••••••"
+             class="input-field w-full rounded-lg px-3 py-2 text-xs" required />
+    </div>
+    <button type="submit"
+            class="btn-primary inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs shrink-0">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+      Add User
+    </button>
+  </form>
+</div>
+
+<div class="card rounded-xl p-5">
+  <h3 class="text-xs font-semibold text-[#e6edf3] mb-1">Change Password</h3>
+  <p class="text-xs text-muted mb-4">Change password for any user. Admin can change any account; others can only change their own.</p>
+  <form method="post" id="change-pw-form" action="/settings/users/{{ current_user }}/password" class="flex items-end gap-3 flex-wrap">
+    <div class="min-w-[160px]">
+      <label class="block text-xs text-muted mb-1">User</label>
+      <select name="_target" id="pw-user-select"
+              onchange="document.getElementById('change-pw-form').action='/settings/users/'+this.value+'/password'"
+              class="input-field w-full rounded-lg px-3 py-2 text-xs cursor-pointer">
+        {% for user in users %}
+        <option value="{{ user }}" {% if user == current_user %}selected{% endif %}>{{ user }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex-1 min-w-[160px]">
+      <label class="block text-xs text-muted mb-1">New Password</label>
+      <input name="new_password" type="password" autocomplete="new-password" placeholder="min 6 chars"
+             class="input-field w-full rounded-lg px-3 py-2 text-xs" required minlength="6" />
+    </div>
+    <div class="flex-1 min-w-[160px]">
+      <label class="block text-xs text-muted mb-1">Confirm Password</label>
+      <input name="confirm" type="password" autocomplete="new-password" placeholder="repeat password"
+             class="input-field w-full rounded-lg px-3 py-2 text-xs" required minlength="6" />
+    </div>
+    <button type="submit"
+            class="btn-primary inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs shrink-0">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Change Password
+    </button>
+  </form>
+</div>
+
+</div><!-- /panel-users -->
+
+
+<style>
+  .tab-btn { color: #8b949e; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab-btn:hover { color: #e6edf3; }
+  .tab-btn.active { color: #e6edf3; border-bottom-color: currentColor; }
+</style>
+
+<script>
+  const TABS = ['credentials', 'customization', 'users'];
+
+  function switchTab(name) {
+    TABS.forEach(t => {
+      document.getElementById('panel-' + t).style.display   = t === name ? '' : 'none';
+      document.getElementById('tab-' + t).classList.toggle('active', t === name);
+    });
+    // Update URL without reload
+    const url = new URL(window.location);
+    url.searchParams.set('tab', name);
+    history.replaceState({}, '', url);
+  }
+
+  // Activate the tab from server-side or URL param
+  const urlTab = new URLSearchParams(window.location.search).get('tab') || '{{ active_tab }}';
+  switchTab(TABS.includes(urlTab) ? urlTab : 'credentials');
+
+  // ── Color picker helpers ────────────────────────────────────────────
+  function syncColor(picker, _name, hexId) {
+    document.getElementById(hexId).value = picker.value;
+  }
+  function syncHex(hexInput, pickerId) {
+    const v = hexInput.value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+      document.getElementById(pickerId).value = v;
+    }
+  }
+  function updatePreview() {
+    const accent = document.getElementById('cp-accent-hex').value;
+    const surface = document.getElementById('cp-surface-hex')?.value || '{{ ui.surface_color }}';
+    if (!/^#[0-9a-fA-F]{6}$/.test(accent)) return;
+    document.getElementById('preview-btn').style.background = accent;
+    document.getElementById('preview-btn').style.color = surface;
+    document.getElementById('preview-tag').style.color = accent;
+    document.getElementById('preview-tag').style.borderColor = accent + '44';
+    document.getElementById('preview-dot').style.background = accent;
+    document.querySelectorAll('[style*="accent text"]').forEach(el => el.style.color = accent);
+  }
+  function resetDefaults() {
+    document.getElementById('cp-accent-hex').value        = '#00a0f0';
+    document.getElementById('cp-accent').value            = '#00a0f0';
+    document.getElementById('cp-surface-hex').value       = '#0d1117';
+    document.getElementById('cp-surface').value           = '#0d1117';
+    document.getElementById('cp-panel-hex').value         = '#161b22';
+    document.getElementById('cp-panel').value             = '#161b22';
+    updatePreview();
+  }
+</script>
+
+{% endblock %}

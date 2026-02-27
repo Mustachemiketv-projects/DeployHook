@@ -1,0 +1,35 @@
+
+name: Build and Push to GHCR
+
+on:
+  push:
+    branches: [main, develop]
+    #main is for production releases, develop is for staging/testing releases
+    
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set lowercase owner and repo
+        id: vars
+        run: |
+          echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+          echo "repo=$(echo '${{ github.event.repository.name }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+          echo "tag=$([[ '${{ github.ref_name }}' == 'main' ]] && echo 'latest' || echo 'develop')" >> $GITHUB_OUTPUT
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build Docker image
+        run: docker build -t ghcr.io/${{ steps.vars.outputs.owner }}/${{ steps.vars.outputs.repo }}:${{ steps.vars.outputs.tag }} .
+        
+      - name: Push Docker image
+        run: docker push ghcr.io/${{ steps.vars.outputs.owner }}/${{ steps.vars.outputs.repo }}:${{ steps.vars.outputs.tag }}
+ 

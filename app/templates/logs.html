@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}Logs — {{ repo.container_name }} — {{ ui.app_title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+  <!-- Header -->
+  <div class="flex items-center gap-3 mb-5">
+    <a href="/" class="text-muted hover:text-[#e6edf3] transition-colors">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </a>
+    <div class="flex-1 min-w-0">
+      <h1 class="text-lg font-semibold text-[#e6edf3]">{{ repo.container_name }}</h1>
+      <p class="text-xs text-muted mt-0.5 truncate">{{ repo.image }}</p>
+    </div>
+
+    <!-- Status badge -->
+    <span id="status-badge"
+          class="flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5 border border-[#30363d] text-muted">
+      <span id="status-dot" class="w-1.5 h-1.5 rounded-full bg-[#484f58] inline-block"></span>
+      <span id="status-text">checking…</span>
+    </span>
+
+    <!-- Controls -->
+    <div class="flex items-center gap-2">
+      <label class="flex items-center gap-1.5 text-xs text-muted cursor-pointer select-none">
+        <input type="checkbox" id="auto-refresh" checked
+               style="accent-color: #3fb950" />
+        auto&nbsp;refresh
+      </label>
+      <button onclick="fetchLogs()" id="refresh-btn"
+              class="btn-ghost rounded-lg px-3 py-1.5 text-xs flex items-center gap-1.5">
+        <svg id="refresh-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        Refresh
+      </button>
+      <select id="tail-select" onchange="fetchLogs()"
+              class="input-field rounded-lg px-2 py-1.5 text-xs">
+        <option value="100">last 100</option>
+        <option value="300" selected>last 300</option>
+        <option value="500">last 500</option>
+        <option value="1000">last 1000</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Terminal -->
+  <div class="card rounded-xl overflow-hidden">
+    <!-- Terminal title bar -->
+    <div class="flex items-center justify-between px-4 py-2.5 border-b border-[#30363d] bg-[#0d1117]">
+      <div class="flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full bg-[#f85149] inline-block"></span>
+        <span class="w-3 h-3 rounded-full bg-[#e3b341] inline-block"></span>
+        <span class="w-3 h-3 rounded-full inline-block" style="background: #3fb950"></span>
+      </div>
+      <span class="text-[10px] text-muted font-mono">docker logs --timestamps {{ repo.container_name }}</span>
+      <button onclick="scrollToBottom()" class="text-[10px] text-muted hover:text-[#e6edf3] transition-colors">
+        ↓ bottom
+      </button>
+    </div>
+
+    <!-- Log output -->
+    <pre id="log-output"
+         class="font-mono text-[11px] leading-relaxed text-[#e6edf3] overflow-auto bg-[#0d1117] p-4"
+         style="min-height:420px;max-height:65vh;white-space:pre-wrap;word-break:break-all"
+    ><span class="text-muted">Loading…</span></pre>
+  </div>
+
+  <!-- Footer note -->
+  <p class="text-[10px] text-muted mt-3 text-right">
+    Timestamps are UTC. Shows stdout + stderr combined.
+    Auto-refresh every <span id="interval-label">5s</span>.
+  </p>
+
+</div>
+
+<script>
+  const REPO_ID  = {{ repo.id | tojson }};
+  let   timer    = null;
+  let   spinning = false;
+
+  const output   = document.getElementById('log-output');
+  const badge    = document.getElementById('status-badge');
+  const dot      = document.getElementById('status-dot');
+  const statusTxt= document.getElementById('status-text');
+  const autoChk  = document.getElementById('auto-refresh');
+  const tailSel  = document.getElementById('tail-select');
+  const icon     = document.getElementById('refresh-icon');
+
+  function setStatus(running) {
+    if (running === true) {
+      dot.className       = 'w-1.5 h-1.5 rounded-full inline-block animate-pulse';
+      dot.style.background = '#3fb950';
+      statusTxt.textContent = 'running';
+      badge.style.color       = '#3fb950';
+      badge.style.borderColor = '#3fb95044';
+    } else if (running === false) {
+      dot.className       = 'w-1.5 h-1.5 rounded-full inline-block';
+      dot.style.background = '#484f58';
+      statusTxt.textContent = 'stopped';
+      badge.style.color       = '';
+      badge.style.borderColor = '';
+    }
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Colour-code log lines: errors red, warnings yellow, timestamps muted
+  function colourise(line) {
+    const ts   = line.match(/^(\d{4}-\d{2}-\d{2}T[\d:.]+Z)\s/);
+    let   rest = ts ? line.slice(ts[0].length) : line;
+    const tsPart = ts
+      ? `<span class="text-[#484f58]">${escapeHtml(ts[1])} </span>`
+      : '';
+    const low = rest.toLowerCase();
+    let cls = 'text-[#e6edf3]';
+    if (/\b(error|err|exception|fatal|critical|panic)\b/.test(low)) cls = 'text-[#f85149]';
+    else if (/\b(warn|warning)\b/.test(low)) cls = 'text-[#e3b341]';
+    else if (/\b(info|debug)\b/.test(low)) cls = 'text-[#58a6ff]';
+    return `${tsPart}<span class="${cls}">${escapeHtml(rest)}</span>`;
+  }
+
+  async function fetchLogs() {
+    if (spinning) return;
+    spinning = true;
+    icon.classList.add('animate-spin');
+
+    const tail = tailSel.value;
+    try {
+      const res  = await fetch(`/api/repos/${REPO_ID}/logs?tail=${tail}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        output.innerHTML = `<span class="text-[#f85149]">${escapeHtml(data.error || 'Failed to fetch logs')}</span>`;
+        return;
+      }
+
+      const atBottom = output.scrollHeight - output.scrollTop - output.clientHeight < 40;
+
+      if (data.lines && data.lines.length) {
+        output.innerHTML = data.lines.map(colourise).join('\n');
+      } else {
+        output.innerHTML = '<span class="text-muted">(no output yet)</span>';
+      }
+
+      setStatus(data.running);
+
+      if (atBottom) output.scrollTop = output.scrollHeight;
+
+    } catch(e) {
+      output.innerHTML = `<span class="text-[#f85149]">Network error: ${escapeHtml(String(e))}</span>`;
+    } finally {
+      spinning = false;
+      icon.classList.remove('animate-spin');
+    }
+  }
+
+  function scrollToBottom() {
+    output.scrollTop = output.scrollHeight;
+  }
+
+  function startTimer() {
+    if (timer) clearInterval(timer);
+    timer = setInterval(fetchLogs, 5000);
+  }
+
+  function stopTimer() {
+    if (timer) { clearInterval(timer); timer = null; }
+  }
+
+  autoChk.addEventListener('change', () => {
+    autoChk.checked ? startTimer() : stopTimer();
+  });
+
+  // Initial load + start polling
+  fetchLogs();
+  startTimer();
+  // Scroll to bottom after first load
+  setTimeout(scrollToBottom, 600);
+</script>
+{% endblock %}

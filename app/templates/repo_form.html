@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit" if repo else "Add" }} Repo — {{ ui.app_title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+
+  <!-- Header -->
+  <div class="flex items-center gap-3 mb-4">
+    <a href="/" class="text-muted hover:text-[#e6edf3] transition-colors">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </a>
+    <div class="flex-1">
+      <h1 class="text-base font-semibold text-[#e6edf3]">{{ "Edit" if repo else "Add" }} Repository</h1>
+      <p class="text-xs text-muted mt-0.5">
+        {% if repo %}Updating <span class="text-accent">{{ repo.container_name }}</span>{% else %}Configure a new auto-deploy target{% endif %}
+      </p>
+    </div>
+    {% if not repo %}
+    <a href="/repos/browse" class="btn-ghost inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs shrink-0">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      Browse
+    </a>
+    {% endif %}
+  </div>
+
+  {% if error %}
+  <div class="mb-3 rounded-lg bg-[#1a0d0d] border border-[#f8514944] px-4 py-2.5 text-[#f85149] text-xs">{{ error }}</div>
+  {% endif %}
+
+  <!-- GitHub Lookup -->
+  {% if not repo %}
+  <div class="card rounded-xl px-4 py-3 mb-3">
+    <div class="flex gap-2 items-center">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted shrink-0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="lookup-input" type="text" placeholder="Lookup org/repo-name from GitHub"
+             class="input-field flex-1 rounded-lg px-3 py-2 text-xs"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();doLookup()}" />
+      <button type="button" onclick="doLookup()" id="lookup-btn"
+              class="btn-ghost rounded-lg px-3 py-2 text-xs flex items-center gap-1.5 shrink-0">
+        <span id="lookup-spinner" class="hidden w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+        Autofill
+      </button>
+    </div>
+    <p id="lookup-error" class="text-[#f85149] text-xs mt-1.5 hidden"></p>
+    <p id="lookup-info" class="text-accent text-xs mt-1.5 hidden"></p>
+  </div>
+  {% endif %}
+
+  <form method="post" class="space-y-3" id="repo-form">
+
+    <!-- Identity + Runtime combined -->
+    <div class="card rounded-xl p-4 space-y-3">
+      <h2 class="text-xs font-semibold text-muted uppercase tracking-wider">Identity</h2>
+
+      <!-- Row 1: GitHub Repo + Container Name -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs text-muted mb-1">GitHub Repo <span class="text-danger">*</span></label>
+          <input id="f-github-repo" name="github_repo" type="text" required
+                 placeholder="org/repo-name"
+                 value="{{ repo.github_repo if repo else '' }}"
+                 class="input-field w-full rounded-lg px-2.5 py-2 text-xs"
+                 oninput="autoImage()" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Container Name <span class="text-danger">*</span></label>
+          <input id="f-container" name="container_name" type="text" required
+                 placeholder="my_app"
+                 value="{{ repo.container_name if repo else '' }}"
+                 class="input-field w-full rounded-lg px-2.5 py-2 text-xs" />
+        </div>
+      </div>
+
+      <!-- Row 2: Image + Branch -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs text-muted mb-1">Image <span class="text-danger">*</span></label>
+          <div class="relative">
+            <input id="f-image" name="image" type="text" required
+                   placeholder="ghcr.io/org/image:latest"
+                   value="{{ repo.image if repo else '' }}"
+                   class="input-field w-full rounded-lg px-2.5 py-2 text-xs font-mono" />
+            <span id="image-auto-badge" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-accent">auto</span>
+          </div>
+          <p class="text-[10px] text-[#484f58] mt-0.5">Use <code>{branch}</code> for per-branch images</p>
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Branch <span class="text-danger">*</span></label>
+          <input name="branch" type="text" required
+                 placeholder="main"
+                 value="{{ repo.branch if repo and repo.branch else '' }}"
+                 class="input-field w-full rounded-lg px-2.5 py-2 text-xs font-mono" />
+          <p class="text-[10px] text-[#484f58] mt-0.5">e.g. <code>main</code>, <code>develop</code></p>
+        </div>
+      </div>
+
+      <div class="border-t border-[#30363d] pt-3">
+        <h2 class="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Runtime</h2>
+
+        <!-- Port Mapping -->
+        <div class="mb-3">
+          <label class="block text-xs text-muted mb-1">Port Mapping</label>
+          <input name="ports" type="text"
+                 placeholder="3000:3000"
+                 value="{{ repo.ports if repo else '' }}"
+                 class="input-field w-full rounded-lg px-2.5 py-2 text-xs font-mono" />
+        </div>
+
+        <!-- Row 3: Volumes + Extra Flags -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-muted mb-1">Volume Mounts <span class="text-[#484f58]">(one per line)</span></label>
+            <textarea name="volumes"
+                      placeholder="/host/path:/container/path"
+                      class="input-field w-full rounded-lg px-2.5 py-2 text-xs font-mono" style="min-height:72px;resize:vertical">{{ ("\n".join(repo.volumes)) if repo and repo.volumes else '' }}</textarea>
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Extra Docker Flags <span class="text-[#484f58]">(one per line)</span></label>
+            <textarea name="extra_flags"
+                      placeholder="--network host&#10;--memory 512m&#10;--cpus 0.5"
+                      class="input-field w-full rounded-lg px-2.5 py-2 text-xs font-mono" style="min-height:72px;resize:vertical">{{ ("\n".join(repo.extra_flags)) if repo and repo.extra_flags else '' }}</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Environment Variables -->
+    <div class="card rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-2">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{ ui.accent_color }}" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <h2 class="text-xs font-semibold text-muted uppercase tracking-wider">Environment Variables</h2>
+        {% if repo and repo.has_env %}<span class="tag tag-warn">.env saved — paste new to replace</span>{% endif %}
+      </div>
+      <textarea name="env_content"
+                placeholder="{{ 'REDACTED — leave blank to keep existing .env' if repo and repo.has_env else 'KEY=value\nDATABASE_URL=postgres://...\nSECRET_KEY=abc123' }}"
+                class="input-field w-full rounded-lg px-2.5 py-2 text-xs font-mono" style="min-height:80px;resize:vertical"></textarea>
+      <p class="text-[10px] text-[#484f58] mt-1">Plain KEY=VALUE format. Stored on disk, never shown again once saved.</p>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex items-center gap-3 justify-end pb-2">
+      <a href="/" class="btn-ghost rounded-lg px-4 py-2 text-xs">Cancel</a>
+      <button type="submit" class="btn-primary rounded-lg px-5 py-2 text-xs">
+        {{ "Save Changes" if repo else "Add Repository" }}
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<script>
+  function autoImage() {
+    const repo  = document.getElementById('f-github-repo').value.trim();
+    const img   = document.getElementById('f-image');
+    const badge = document.getElementById('image-auto-badge');
+    if (!repo || repo.indexOf('/') === -1) return;
+    const [owner, name] = repo.split('/', 2);
+    const derived = `ghcr.io/${owner.toLowerCase()}/${name.toLowerCase()}:latest`;
+    if (!img._manual) { img.value = derived; badge.classList.remove('hidden'); }
+  }
+
+  document.getElementById('f-image').addEventListener('input', function() {
+    this._manual = true;
+    document.getElementById('image-auto-badge').classList.add('hidden');
+  });
+
+  {% if prefill %}
+  window.addEventListener('DOMContentLoaded', () => {
+    const li = document.getElementById('lookup-input');
+    if (li) { li.value = {{ prefill | tojson }}; }
+    doLookup({{ prefill | tojson }});
+  });
+  {% endif %}
+
+  async function doLookup(overrideVal) {
+    const val = overrideVal !== undefined
+      ? overrideVal
+      : document.getElementById('lookup-input').value.trim();
+    if (!val) return;
+
+    const btn     = document.getElementById('lookup-btn');
+    const spinner = document.getElementById('lookup-spinner');
+    const errEl   = document.getElementById('lookup-error');
+    const infoEl  = document.getElementById('lookup-info');
+
+    btn.disabled = true;
+    spinner.classList.remove('hidden');
+    errEl.classList.add('hidden');
+    infoEl.classList.add('hidden');
+
+    try {
+      const res  = await fetch(`/api/github/lookup?repo=${encodeURIComponent(val)}`);
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.error || 'Lookup failed'; errEl.classList.remove('hidden'); return; }
+
+      document.getElementById('f-github-repo').value = val;
+      document.getElementById('f-container').value   = data.container_name;
+
+      const img = document.getElementById('f-image');
+      img.value = data.image; img._manual = false;
+      document.getElementById('image-auto-badge').classList.remove('hidden');
+
+      const branchInput = document.querySelector('[name="branch"]');
+      if (branchInput && !branchInput.value && data.default_branch) {
+        branchInput.value = data.default_branch;
+      }
+
+      infoEl.textContent = data.description ? `✓ ${data.description}` : '✓ Repository found — fields auto-filled';
+      infoEl.classList.remove('hidden');
+    } catch(e) {
+      errEl.textContent = 'Network error — check console';
+      errEl.classList.remove('hidden');
+    } finally {
+      btn.disabled = false;
+      spinner.classList.add('hidden');
+    }
+  }
+</script>
+{% endblock %}

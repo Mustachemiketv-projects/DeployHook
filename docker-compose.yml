@@ -1,0 +1,13 @@
+services:
+  webhook:
+    build: .
+    container_name: webhook_server
+    restart: unless-stopped
+    ports:
+      - "3002:8000"
+    env_file:
+      - .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persistent data — DB, secrets, logs
+      - /etc/deployhook:/etc/deployhook
