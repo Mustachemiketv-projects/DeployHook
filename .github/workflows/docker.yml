@@ -1,11 +1,10 @@
 
-name: Build and Push to GHCR
+name: Build and Push
 
 on:
   push:
     branches: [main, develop]
-    #main is for production releases, develop is for staging/testing releases
-    
+    # main → :latest (production), develop → :develop (staging)
 
 jobs:
   build:
@@ -13,33 +12,44 @@ jobs:
     permissions:
       packages: write
       contents: read
+      id-token: write    # required for provenance attestations
+      attestations: write
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Set lowercase owner and repo
+      - name: Set image tags
         id: vars
         run: |
           echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
           echo "repo=$(echo '${{ github.event.repository.name }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
           echo "tag=$([[ '${{ github.ref_name }}' == 'main' ]] && echo 'latest' || echo 'develop')" >> $GITHUB_OUTPUT
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Log in to GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to Docker Hub
-        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build Docker image
-        run: |
-          docker build \
-            -t ghcr.io/${{ steps.vars.outputs.owner }}/${{ steps.vars.outputs.repo }}:${{ steps.vars.outputs.tag }} \
-            -t ${{ secrets.DOCKERHUB_USERNAME }}/deployhook:${{ steps.vars.outputs.tag }} \
-            .
-
-      - name: Push to GHCR
-        run: docker push ghcr.io/${{ steps.vars.outputs.owner }}/${{ steps.vars.outputs.repo }}:${{ steps.vars.outputs.tag }}
-
-      - name: Push to Docker Hub
-        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/deployhook:${{ steps.vars.outputs.tag }}
- 
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ steps.vars.outputs.owner }}/${{ steps.vars.outputs.repo }}:${{ steps.vars.outputs.tag }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/deployhook:${{ steps.vars.outputs.tag }}
+          provenance: true
+          sbom: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

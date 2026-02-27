@@ -20,9 +20,9 @@ from typing import Optional
 # Paths
 # ---------------------------------------------------------------------------
 
-DB_DIR      = "/etc/deployhook"
-DB_PATH     = "/etc/deployhook/deployhook.db"
-SECRETS_PATH = "/etc/deployhook/.secrets"
+DB_DIR       = "/app/data"
+DB_PATH      = "/app/data/deployhook.db"
+SECRETS_PATH = "/app/data/.secrets"
 
 # Legacy paths — used only for one-time migration
 _OLD_DATA    = os.path.join(os.path.dirname(__file__), "..", "data")

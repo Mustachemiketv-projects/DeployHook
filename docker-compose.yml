@@ -1,5 +1,6 @@
 services:
   webhook:
+    image: mustachemiketv/deployhook:latest
     build: .
     container_name: webhook_server
     restart: unless-stopped
@@ -7,7 +8,12 @@ services:
       - "3002:8000"
     env_file:
       - .env
+    group_add:
+      - "${DOCKER_GID:-988}"  # docker socket GID — run: stat -c '%g' /var/run/docker.sock
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       # Persistent data — DB, secrets, logs
-      - /etc/deployhook:/etc/deployhook
+      - deployhook_data:/app/data
+
+volumes:
+  deployhook_data:

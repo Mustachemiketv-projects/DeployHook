@@ -32,8 +32,10 @@ docker run -d \
   --restart unless-stopped \
   -p 3002:8000 \
   -e SESSION_SECRET=$(openssl rand -hex 32) \
+  -e DOCKER_GID=$(stat -c '%g' /var/run/docker.sock) \
+  --group-add $(stat -c '%g' /var/run/docker.sock) \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /etc/deployhook:/etc/deployhook \
+  -v deployhook_data:/app/data \
   mustachemiketv/deployhook:latest
 ```
 
@@ -51,9 +53,15 @@ services:
       - "3002:8000"
     environment:
       - SESSION_SECRET=change-this-to-a-random-string
+      - DOCKER_GID=988  # run: stat -c '%g' /var/run/docker.sock
+    group_add:
+      - "${DOCKER_GID:-988}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /etc/deployhook:/etc/deployhook
+      - deployhook_data:/app/data
+
+volumes:
+  deployhook_data:
 ```
 
 Then run:
@@ -70,6 +78,7 @@ docker compose up -d
 4. Click **Deploy the stack**
 
 > Generate a strong session secret with: `openssl rand -hex 32`
+> Find your docker socket GID with: `stat -c '%g' /var/run/docker.sock`
 
 ---
 
@@ -197,20 +206,25 @@ GitHub → POST /webhook
 
 ## Data Storage
 
-All persistent data lives on the host at `/etc/deployhook/` — mounted as a bind volume.
+All persistent data is stored in a Docker named volume (`deployhook_data`) mounted at `/app/data` inside the container. The container runs as a non-root user (`deployhook`) and owns this directory.
 
 | Path | Contents |
 |---|---|
-| `/etc/deployhook/deployhook.db` | SQLite database (repos, users, settings, credentials) |
-| `/etc/deployhook/.secrets/<repo-id>.env` | Per-repo env files injected at deploy time |
-| `/etc/deployhook/app.log` | Rotating application log (2 MB, 2 backups) |
+| `/app/data/deployhook.db` | SQLite database (repos, users, settings, credentials) |
+| `/app/data/.secrets/<repo-id>.env` | Per-repo env files injected at deploy time |
+| `/app/data/app.log` | Rotating application log (2 MB, 2 backups) |
 
-The directory and database are created automatically on first start. Passwords are hashed with **PBKDF2-SHA256** (100 000 iterations) with a unique random salt per user.
-
-To back up everything:
+To back up:
 
 ```bash
-cp -r /etc/deployhook /your/backup/location
+docker cp webhook_server:/app/data /your/backup/location
+```
+
+Or access the volume directly:
+
+```bash
+docker run --rm -v deployhook_data:/data -v $(pwd):/backup alpine \
+  tar czf /backup/deployhook-backup.tar.gz -C /data .
 ```
 
 ---

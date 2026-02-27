@@ -12,7 +12,7 @@ MAX_LINES = 1000
 
 _buffer: deque = deque(maxlen=MAX_LINES)
 
-_LOG_FILE = "/etc/deployhook/app.log"
+_LOG_FILE = "/app/data/app.log"
 
 
 class _BufferHandler(logging.Handler):
