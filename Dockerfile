@@ -1,20 +1,19 @@
-FROM python:3.13-slim
+FROM python:3.13-alpine
 
 WORKDIR /app
 
-# Install system deps: Docker CLI
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl \
-    && rm -rf /var/lib/apt/lists/* \
+# Install system deps: Docker CLI static binary
+RUN apk add --no-cache ca-certificates curl \
     && curl -fsSL "https://download.docker.com/linux/static/stable/$(uname -m)/docker-29.2.1.tgz" \
        | tar -xz --strip-components=1 -C /usr/local/bin docker/docker
 
-# Create non-root user and a docker socket group (GID matched at runtime via group_add)
-RUN addgroup --system deployhook \
-    && adduser --system --ingroup deployhook --no-create-home deployhook
+# Create non-root user
+RUN addgroup -S deployhook \
+    && adduser -S -D -H -G deployhook deployhook
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip==26.0.1 \
+    && pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 

@@ -2,7 +2,7 @@ services:
   webhook:
     image: mustachemiketv/deployhook:latest
     build: .
-    container_name: webhook_server
+    container_name: deployhook
     restart: unless-stopped
     ports:
       - "3002:8000"
