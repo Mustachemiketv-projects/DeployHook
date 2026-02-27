@@ -32,4 +32,5 @@ jobs:
         
       - name: Push Docker image
         run: docker push ghcr.io/${{ steps.vars.outputs.owner }}/${{ steps.vars.outputs.repo }}:${{ steps.vars.outputs.tag }}
+        run: docker push mustachemiketv/deployhook:latest
  
