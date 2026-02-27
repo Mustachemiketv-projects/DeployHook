@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 WORKDIR /app
 
@@ -6,7 +6,7 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/* \
-    && curl -fsSL "https://download.docker.com/linux/static/stable/$(uname -m)/docker-27.3.1.tgz" \
+    && curl -fsSL "https://download.docker.com/linux/static/stable/$(uname -m)/docker-29.2.1.tgz" \
        | tar -xz --strip-components=1 -C /usr/local/bin docker/docker
 
 COPY requirements.txt .
