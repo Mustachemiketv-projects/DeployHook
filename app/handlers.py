@@ -81,9 +81,10 @@ def notify_deploy_fail(github_repo: str, container_name: str, error: str):
 # Keep a plain helper for one-off messages
 def notify(msg: str):
     log.info("%s", msg)
-    if DISCORD_WEBHOOK_URL:
+    url = models.get_setting("DISCORD_WEBHOOK_URL", "")
+    if url:
         try:
-            http_requests.post(DISCORD_WEBHOOK_URL, json={"content": msg}, timeout=5)
+            http_requests.post(url, json={"content": msg}, timeout=5)
         except Exception:
             pass
 
