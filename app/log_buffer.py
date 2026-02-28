@@ -5,6 +5,7 @@ Call setup() once at startup. All loggers (including uvicorn) will feed here.
 """
 import logging
 import os
+import sys
 from collections import deque
 from logging.handlers import RotatingFileHandler
 
@@ -39,9 +40,13 @@ def setup():
     file_handler = RotatingFileHandler(_LOG_FILE, maxBytes=2_000_000, backupCount=2)
     file_handler.setFormatter(fmt)
 
+    # stdout sink so `docker logs` captures output
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setFormatter(fmt)
+
     root = logging.getLogger()
     root.setLevel(logging.INFO)
-    for h in (buf_handler, file_handler):
+    for h in (buf_handler, file_handler, stdout_handler):
         root.addHandler(h)
 
     # Pull uvicorn's own loggers into the same handlers

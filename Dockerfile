@@ -21,6 +21,9 @@ COPY app ./app
 RUN mkdir -p /app/data/.secrets \
     && chown -R deployhook:deployhook /app
 
+# Point HOME to the persistent data volume so docker login can write ~/.docker/config.json
+ENV HOME=/app/data
+
 USER deployhook
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
