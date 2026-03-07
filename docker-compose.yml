@@ -5,7 +5,7 @@ services:
     container_name: deployhook
     restart: unless-stopped
     ports:
-      - "3002:8000"
+      - "8000:8000"
     env_file:
       - .env
     group_add:
