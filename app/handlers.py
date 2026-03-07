@@ -166,6 +166,42 @@ def deploy(repo: dict, head_branch: str = ""):
         detail = (pull.stderr or pull.stdout or "no output").strip()
         raise RuntimeError(f"docker pull failed: {detail}")
 
+    # Log image creation date and tags after a successful pull
+    try:
+        import json as _json
+        inspect = subprocess.run(
+            ["docker", "inspect", "--format",
+             '{"created":"{{.Created}}","tags":{{json .RepoTags}}}', image],
+            capture_output=True, text=True,
+        )
+        if inspect.returncode == 0 and inspect.stdout.strip():
+            meta = _json.loads(inspect.stdout.strip())
+            created_raw = meta.get("created", "")
+            tags = meta.get("tags") or [image]
+            # Trim nanoseconds to microseconds for fromisoformat compatibility
+            created_str = created_raw
+            if "." in created_raw:
+                base, frac = created_raw.split(".", 1)
+                # frac may end with 'Z' or '+00:00'
+                suffix = ""
+                for sep in ("Z", "+"):
+                    idx = frac.find(sep)
+                    if idx != -1:
+                        suffix = frac[idx:]
+                        frac = frac[:idx]
+                        break
+                frac = frac[:6]
+                created_str = f"{base}.{frac}{suffix}"
+            created_str = created_str.replace("Z", "+00:00")
+            try:
+                created_dt = datetime.fromisoformat(created_str)
+                created_fmt = created_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+            except ValueError:
+                created_fmt = created_raw
+            log.info("Pulled image — tag(s): %s | created: %s", ", ".join(tags), created_fmt)
+    except Exception as _exc:
+        log.debug("Could not read image metadata: %s", _exc)
+
     if container_running(container_name):
         subprocess.run(["docker", "stop", container_name], capture_output=True)
         subprocess.run(["docker", "rm",   "-f", container_name], capture_output=True)
