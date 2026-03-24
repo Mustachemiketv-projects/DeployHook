@@ -99,7 +99,7 @@ def _get_effective_token(request: Request) -> str:
 async def login_page(request: Request):
     if is_logged_in(request):
         return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return templates.TemplateResponse(request, "login.html", {"error": None})
 
 
 @app.post("/login", response_class=HTMLResponse)
@@ -110,8 +110,7 @@ async def login_submit(request: Request,
         request.session["authenticated"] = True
         request.session["username"] = username
         return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse("login.html",
-                                      {"request": request, "error": "Invalid credentials"})
+    return templates.TemplateResponse(request, "login.html", {"error": "Invalid credentials"})
 
 
 @app.get("/logout")
@@ -216,8 +215,7 @@ async def browse_repos(request: Request):
     gh_username  = request.session.get("github_username", "")
     # Pass already-tracked repo names so the browser can mark them
     repos_set    = [r["github_repo"] for r in models.list_repos()]
-    return templates.TemplateResponse("browse.html", {
-        "request":      request,
+    return templates.TemplateResponse(request, "browse.html", {
         "gh_connected": gh_connected,
         "gh_oauth_ok":  gh_oauth_ok,
         "gh_token":     gh_token,
@@ -383,8 +381,7 @@ async def dashboard(request: Request):
     if not base_url:
         base_url = str(request.base_url).rstrip("/")
     webhook_url  = base_url + ui["webhook_path"]
-    return templates.TemplateResponse("dashboard.html", {
-        "request":      request,
+    return templates.TemplateResponse(request, "dashboard.html", {
         "repos":        repos,
         "gh_connected": gh_connected,
         "gh_username":  gh_username,
@@ -402,8 +399,8 @@ async def dashboard(request: Request):
 async def new_repo_form(request: Request):
     # ?repo=org/name  — passed from the browser to trigger JS autofill
     prefill = request.query_params.get("repo", "")
-    return templates.TemplateResponse("repo_form.html", {
-        "request": request, "repo": None, "error": None, "prefill": prefill,
+    return templates.TemplateResponse(request, "repo_form.html", {
+        "repo": None, "error": None, "prefill": prefill,
     })
 
 
@@ -421,8 +418,8 @@ async def new_repo_submit(
     branch:         str = Form(...),
 ):
     if not branch.strip():
-        return templates.TemplateResponse("repo_form.html", {
-            "request": request, "repo": None, "error": "Branch is required.",
+        return templates.TemplateResponse(request, "repo_form.html", {
+            "repo": None, "error": "Branch is required.",
         })
     try:
         models.save_repo(
@@ -437,8 +434,8 @@ async def new_repo_submit(
         )
         return RedirectResponse("/", status_code=302)
     except Exception as e:
-        return templates.TemplateResponse("repo_form.html", {
-            "request": request, "repo": None, "error": str(e),
+        return templates.TemplateResponse(request, "repo_form.html", {
+            "repo": None, "error": str(e),
         })
 
 
@@ -452,8 +449,8 @@ async def edit_repo_form(request: Request, repo_id: str):
     repo = models.get_repo(repo_id)
     if repo is None:
         return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse("repo_form.html",
-                                      {"request": request, "repo": repo, "error": None})
+    return templates.TemplateResponse(request, "repo_form.html",
+                                      {"repo": repo, "error": None})
 
 
 @app.post("/repos/{repo_id}/edit", response_class=HTMLResponse)
@@ -472,8 +469,8 @@ async def edit_repo_submit(
 ):
     if not branch.strip():
         repo = models.get_repo(repo_id) or {}
-        return templates.TemplateResponse("repo_form.html", {
-            "request": request, "repo": repo, "error": "Branch is required.",
+        return templates.TemplateResponse(request, "repo_form.html", {
+            "repo": repo, "error": "Branch is required.",
         })
     try:
         models.save_repo(
@@ -491,8 +488,8 @@ async def edit_repo_submit(
         return RedirectResponse("/", status_code=302)
     except Exception as e:
         repo = models.get_repo(repo_id) or {}
-        return templates.TemplateResponse("repo_form.html", {
-            "request": request, "repo": repo, "error": str(e),
+        return templates.TemplateResponse(request, "repo_form.html", {
+            "repo": repo, "error": str(e),
         })
 
 
@@ -564,7 +561,7 @@ async def repo_logs_page(request: Request, repo_id: str):
     repo = models.get_repo(repo_id)
     if repo is None:
         return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse("logs.html", {"request": request, "repo": repo})
+    return templates.TemplateResponse(request, "logs.html", {"repo": repo})
 
 
 @app.get("/api/repos/{repo_id}/logs")
@@ -609,7 +606,7 @@ async def api_repo_logs(request: Request, repo_id: str, tail: int = 300):
 @app.get("/system/logs", response_class=HTMLResponse)
 @require_login
 async def system_logs_page(request: Request):
-    return templates.TemplateResponse("system_logs.html", {"request": request})
+    return templates.TemplateResponse(request, "system_logs.html", {})
 
 
 @app.get("/api/system/logs")
@@ -643,8 +640,7 @@ async def settings_page(request: Request, error: str = "", success: str = "", ta
         "DISCORD_WEBHOOK_URL":    _mask(models.get_setting("DISCORD_WEBHOOK_URL", "")),
     }
     overridden = set(models.load_app_settings().keys())
-    return templates.TemplateResponse("settings.html", {
-        "request":      request,
+    return templates.TemplateResponse(request, "settings.html", {
         "creds":        creds,
         "overridden":   overridden,
         "users":        models.list_users(),
