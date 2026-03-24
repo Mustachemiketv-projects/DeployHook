@@ -5,7 +5,7 @@ services:
     container_name: deployhook
     restart: unless-stopped
     ports:
-      - 3000:3000/tcp
+      - 3002:8000/tcp
     env_file:
       - .env
     group_add:

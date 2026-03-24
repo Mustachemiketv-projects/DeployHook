@@ -1,10 +1,15 @@
-FROM python:3.13-alpine
+FROM python:3.14-alpine3.23
+
+# Override at build time: docker build --build-arg DOCKER_VERSION=29.x.x .
+ARG DOCKER_VERSION=29.3.0
 
 WORKDIR /app
 
-# Install system deps: Docker CLI static binary
-RUN apk add --no-cache ca-certificates curl \
-    && curl -fsSL "https://download.docker.com/linux/static/stable/$(uname -m)/docker-29.2.1.tgz" \
+# Upgrade Alpine packages (addresses vulnerability scanner), install runtime + build deps
+RUN apk upgrade --no-cache \
+    && apk add --no-cache ca-certificates curl \
+    && apk add --no-cache --virtual .build-deps gcc musl-dev python3-dev libffi-dev \
+    && curl -fsSL "https://download.docker.com/linux/static/stable/$(uname -m)/docker-${DOCKER_VERSION}.tgz" \
        | tar -xz --strip-components=1 -C /usr/local/bin docker/docker
 
 # Create non-root user
@@ -12,8 +17,9 @@ RUN addgroup -S deployhook \
     && adduser -S -D -H -G deployhook deployhook
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip==26.0.1 \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt \
+    && apk del .build-deps
 
 COPY app ./app
 
@@ -24,7 +30,7 @@ RUN mkdir -p /app/data/.secrets \
 # Point HOME to the persistent data volume so docker login can write ~/.docker/config.json
 ENV HOME=/app/data
 
-EXPOSE 3002
+EXPOSE 8000
 
 USER deployhook
 

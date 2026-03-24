@@ -68,13 +68,14 @@ app.add_middleware(_DynamicWebhookMiddleware)
 
 _base = os.path.dirname(__file__)
 app.mount("/static", StaticFiles(directory=os.path.join(_base, "static")), name="static")
-templates = Jinja2Templates(directory=os.path.join(_base, "templates"))
 
-# Inject UI customisation as a Jinja2 global so every template gets it for free
-def _refresh_ui_globals():
-    templates.env.globals["ui"] = models.get_ui_context()
+def _ui_context(request: Request) -> dict:
+    return {"ui": models.get_ui_context()}
 
-_refresh_ui_globals()
+templates = Jinja2Templates(
+    directory=os.path.join(_base, "templates"),
+    context_processors=[_ui_context],
+)
 
 GITHUB_TOKEN         = os.getenv("GITHUB_TOKEN", os.getenv("GHCR_PAT", ""))
 
@@ -733,7 +734,6 @@ async def settings_customize(
         "surface_color": surface_color,
         "panel_color":   panel_color,
     })
-    _refresh_ui_globals()
     return RedirectResponse("/settings?tab=customization&success=Customization+saved.", status_code=302)
 
 
